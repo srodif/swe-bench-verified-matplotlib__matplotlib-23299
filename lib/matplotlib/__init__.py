@@ -1184,7 +1184,8 @@ def get_backend():
         import sys
         if 'matplotlib.pyplot' in sys.modules:
             pyplot = sys.modules['matplotlib.pyplot']
-            if hasattr(pyplot, '_backend_mod') and pyplot._backend_mod is not None:
+            if (hasattr(pyplot, '_backend_mod') and pyplot._backend_mod is not None
+                    and hasattr(pyplot._backend_mod, '__name__')):
                 # Backend module is already loaded, extract its name
                 backend_name = pyplot._backend_mod.__name__
                 if backend_name.startswith('matplotlib.backends.backend_'):
