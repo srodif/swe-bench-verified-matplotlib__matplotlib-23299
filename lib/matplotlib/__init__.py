@@ -1175,7 +1175,27 @@ def get_backend():
     --------
     matplotlib.use
     """
-    return rcParams['backend']
+    # Use dict.__getitem__ to avoid triggering auto-backend detection in
+    # RcParams.__getitem__, which would call switch_backend and close all figures.
+    backend = dict.__getitem__(rcParams, 'backend')
+    if backend is rcsetup._auto_backend_sentinel:
+        # If backend is still the auto-sentinel, check if pyplot has already
+        # resolved a backend module without triggering side effects.
+        import sys
+        if 'matplotlib.pyplot' in sys.modules:
+            pyplot = sys.modules['matplotlib.pyplot']
+            if hasattr(pyplot, '_backend_mod') and pyplot._backend_mod is not None:
+                # Backend module is already loaded, extract its name
+                backend_name = pyplot._backend_mod.__name__
+                if backend_name.startswith('matplotlib.backends.backend_'):
+                    return backend_name[len('matplotlib.backends.backend_'):]
+                else:
+                    return backend_name.split('.')[-1]
+        
+        # If we can't determine the backend without side effects, 
+        # return 'agg' as a safe default
+        return 'agg'
+    return backend
 
 
 def interactive(b):

@@ -545,6 +545,42 @@ def test_backend_fallback_headful(tmpdir):
     assert backend.strip().lower() != "agg"
 
 
+def test_get_backend_preserves_figures_in_rc_context():
+    """
+    Test that get_backend() does not clear figures when they were created 
+    inside an rc_context. This is a regression test for issue #23299.
+    """
+    # This test needs to be run in a subprocess to avoid affecting other tests
+    # and to ensure we start with a clean state
+    import subprocess
+    test_code = '''
+import matplotlib.pyplot as plt
+from matplotlib import get_backend, rc_context
+
+# Create a figure inside rc_context (reproduces the issue)
+with rc_context():
+    fig = plt.figure()
+
+# Count figures before and after get_backend()
+before_count = len(plt._pylab_helpers.Gcf.figs)
+backend_name = get_backend()  # This should not clear figures
+after_count = len(plt._pylab_helpers.Gcf.figs)
+
+# Verify figures are preserved
+assert before_count == after_count, f"Figures cleared: {before_count} -> {after_count}"
+assert before_count > 0, "No figures were created"
+print("SUCCESS: get_backend() preserved figures")
+'''
+    
+    result = subprocess.run(
+        [sys.executable, "-c", test_code],
+        capture_output=True, text=True, env={**os.environ, "MPLBACKEND": "Agg"}
+    )
+    
+    assert result.returncode == 0, f"Test failed with output: {result.stdout}\nError: {result.stderr}"
+    assert "SUCCESS" in result.stdout
+
+
 def test_deprecation(monkeypatch):
     monkeypatch.setitem(
         mpl._deprecated_map, "patch.linewidth",
